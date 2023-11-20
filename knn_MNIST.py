@@ -7,6 +7,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn import decomposition
 from scipy.spatial import Voronoi, voronoi_plot_2d
+import torch
+from torch.autograd import grad
+import torch.nn.functional as F
 
 in_path = './archive'
 train_images = join(in_path, 'train-images-idx3-ubyte/train-images-idx3-ubyte')
@@ -43,41 +46,63 @@ class MnistDataloader(object):
         x_train, y_train = self.read_images_labels(self.training_images, self.training_labels)
         x_test, y_test = self.read_images_labels(self.test_images, self.test_labels)
         return (x_train, y_train),(x_test, y_test)
-'''
-class autoencoder(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
 
-        self.encoder = torch.nn.Sequential(
-            torch.nn.Linear(784, 128),
-            torch.nn.ReLU(),
-            torch.nn.Linear(128, 64),
-            torch.nn.ReLU(),
-            torch.nn.Linear(64, 36),
-            torch.nn.ReLU(),
-            torch.nn.Linear(36, 18),
-            torch.nn.ReLU(),
-            torch.nn.Linear(18, 9))
+class AutoEncoder():
+    def __init__(self, dims, activation_list=None):
+        self.layers = len(dims)-1
+        self.params = {}
 
-        self.decoder = torch.nn.Sequential(
-            torch.nn.Linear(9, 18),
-            torch.nn.ReLU(),
-            torch.nn.Linear(18, 36),
-            torch.nn.ReLU(),
-            torch.nn.Linear(36, 64),
-            torch.nn.ReLU(),
-            torch.nn.Linear(64, 128),
-            torch.nn.ReLU(),
-            torch.nn.Linear(128, 784),
-            torch.nn.Sigmoid())
+        for l in range(self.layers):
+            self.params["W"+str(l+1)] = 0.01*torch.randn(dims[l], dims[l+1], requires_grad=True, dtype=torch.float32)
+            self.params["b"+str(l+1)] = torch.zeros((dims[l+1], 1), requires_grad=True, dtype=torch.float32)
+
     def forward(self, x):
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return decoded
+        x = torch.mm(self.params["W1"].T, x.T) + self.params["b1"]
+        x = relu(x)
+        x = torch.mm(self.params["W2"].T, x) + self.params["b2"]
+        x = relu(x)
+        x = torch.mm(self.params["W3"].T, x) + self.params["b3"]
+        x = relu(x)
+        x = torch.mm(self.params["W4"].T, x) + self.params["b4"]
+        x = relu(x)
+        x = torch.mm(self.params["W5"].T, x) + self.params["b5"]
+        x = relu(x)
+        x = torch.mm(self.params["W6"].T, x) + self.params["b6"]
+        return x
 
-    def autoencode(self, x):
-        pass
-'''
+    def test(self, x):
+        x = torch.mm(self.params["W1"].T, x.T) + self.params["b1"]
+        x = relu(x)
+        x = torch.mm(self.params["W2"].T, x) + self.params["b2"]
+        x = relu(x)
+        x = torch.mm(self.params["W3"].T, x) + self.params["b3"]
+        return x
+
+def relu(z):
+    A = torch.clamp(z, min=0.0, max=float('inf'))
+    return A
+
+def train(model, x, labels, epochs=20, l_rate=0.1, seed=1):
+    cost = []
+    torch.manual_seed(seed)
+
+    for i in range(epochs):
+        logits = model.forward(x)
+
+        loss = F.cross_entropy(logits.T, labels)
+        cost.append(loss.detach())
+
+        if not i%20:
+            print('epoch: %02d | Loss: %.5f' % ((i+1), loss))
+
+        gradients = grad(loss, list(model.params.values()))
+
+        with torch.no_grad():
+            for j in range(0, model.layers, 2):
+                model.params["W"+str(j+1)] += -l_rate*gradients[j]
+                model.params["b"+str(j+1)] += -l_rate*gradients[j+1]
+    return cost
+
 def getSum(cm):
     sum = 0
     for i in range(10):
@@ -156,12 +181,47 @@ for i in range(0, len(y_test), 10):
 plt.show()
 plt.clf()
 
+pca.n_components = 2
+pca_transform = pca.fit_transform(x_train)
+pca_test = pca.fit_transform(x_test)
+
 for i in range(len(dimensions)):
-    pca.n_components = dimensions[i]
-    pca_transform = pca.fit_transform(x_train)
-    pca_test = pca.fit_transform(x_test)
+    knn = KNeighborsClassifer(n_neighbors=dimensions[i])
     knn.fit(pca_transform, y_train)
     pred_y = knn.predict(pca_test)
+    cm = confusion_matrix(y_test, pred_y)
+    s = getSum(cm)
+    print("Accuracy[", dimensions[i],"]: ", s/10000)
+
+    plt.imshow(cm, cmap = 'inferno', interpolation='nearest')
+    plt.xlabel('preds')
+    plt.ylabel('vals')
+    plt.show()
+    plt.clf()
+
+x_train = torch.tensor(x_train, dtype=torch.float32)
+y_train = torch.tensor(y_train, dtype=torch.float32)
+x_test = torch.tensor(x_test, dtype=torch.float32)
+y_test = torch.tensor(y_test, dtype=torch.float32)
+
+seed = 1
+torch.manual_seed(seed)
+epochs = 500
+l_rate = 0.05
+
+dims = [784, 300, 100, 2, 100, 300, 784]
+
+model = AutoEncoder(dims)
+cost = train(model, x_train, y_train)
+
+ae_dataset_test = model.test(x_test)
+ae_dataset_train = model.test(x_train)
+
+for i in range(len(dimensions)):
+    knn = KNeighborsClassifer(n_neighbors=dimensions[i])
+    knn.fit(ae_dataset_train, y_train)
+    pred_y = knn.predict(ae_dataset_test)
+
     cm = confusion_matrix(y_test, pred_y)
     s = getSum(cm)
     print("Accuracy[", dimensions[i],"]: ", s/10000)
