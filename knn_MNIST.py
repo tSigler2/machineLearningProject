@@ -89,18 +89,19 @@ def train(model, x, labels, epochs=20, l_rate=0.1, seed=1):
     for i in range(epochs):
         logits = model.forward(x)
 
-        loss = F.cross_entropy(logits.T, labels)
+        loss = F.mse_loss(logits, labels)
         cost.append(loss.detach())
 
         if not i%20:
             print('epoch: %02d | Loss: %.5f' % ((i+1), loss))
 
         gradients = grad(loss, list(model.params.values()))
-
+        k = 1
         with torch.no_grad():
             for j in range(0, model.layers, 2):
-                model.params["W"+str(j+1)] += -l_rate*gradients[j]
-                model.params["b"+str(j+1)] += -l_rate*gradients[j+1]
+                model.params["W"+str(k)] += -l_rate*gradients[j]
+                model.params["b"+str(k)] += -l_rate*gradients[j+1]
+                k += 1
     return cost
 
 def getSum(cm):
@@ -186,7 +187,7 @@ pca_transform = pca.fit_transform(x_train)
 pca_test = pca.fit_transform(x_test)
 
 for i in range(len(dimensions)):
-    knn = KNeighborsClassifer(n_neighbors=dimensions[i])
+    knn = KNeighborsClassifier(n_neighbors=dimensions[i])
     knn.fit(pca_transform, y_train)
     pred_y = knn.predict(pca_test)
     cm = confusion_matrix(y_test, pred_y)
@@ -214,13 +215,13 @@ dims = [784, 300, 100, 2, 100, 300, 784]
 model = AutoEncoder(dims)
 cost = train(model, x_train, y_train)
 
-ae_dataset_test = model.test(x_test)
-ae_dataset_train = model.test(x_train)
+ae_dataset_test = model.test(x_test).detach().numpy()
+ae_dataset_train = model.test(x_train).detach().numpy()
 
 for i in range(len(dimensions)):
-    knn = KNeighborsClassifer(n_neighbors=dimensions[i])
-    knn.fit(ae_dataset_train, y_train)
-    pred_y = knn.predict(ae_dataset_test)
+    knn = KNeighborsClassifier(n_neighbors=dimensions[i])
+    knn.fit(ae_dataset_train.T, y_train)
+    pred_y = knn.predict(ae_dataset_test.T)
 
     cm = confusion_matrix(y_test, pred_y)
     s = getSum(cm)
