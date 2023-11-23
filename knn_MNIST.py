@@ -10,6 +10,7 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 import torch
 from torch.autograd import grad
 import torch.nn.functional as F
+import matplotlib.patches as p
 
 in_path = './archive'
 train_images = join(in_path, 'train-images-idx3-ubyte/train-images-idx3-ubyte')
@@ -158,27 +159,16 @@ plot = voronoi_split(pca_train, y_train)
 v = Voronoi(plot)
 fig = voronoi_plot_2d(v)
 
+point_list = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+c_list = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'olive', 'black', 'cyan']
 for i in range(0, len(y_test), 10):
-    if y_test[i] == 0:
-        plt.scatter(pca_transform[i][0], pca_transform[i][1], color='red')
-    elif y_test[i] == 1:
-       plt.scatter(pca_transform[i][0], pca_transform[i][1], color='orange')
-    elif y_test[i] == 2:
-        plt.scatter(pca_transform[i][0], pca_transform[i][1], color='yellow')
-    elif y_test[i] == 3:
-        plt.scatter(pca_transform[i][0], pca_transform[i][1], color='green')
-    elif y_test[i] == 4:
-        plt.scatter(pca_transform[i][0], pca_transform[i][1], color='blue')
-    elif y_test[i] == 5:
-        plt.scatter(pca_transform[i][0], pca_transform[i][1], color='purple')
-    elif y_test[i] == 6:
-        plt.scatter(pca_transform[i][0], pca_transform[i][1], color='pink')
-    elif y_test[i] == 7:
-        plt.scatter(pca_transform[i][0], pca_transform[i][1], color='olive')
-    elif y_test[i] == 8:
-        plt.scatter(pca_transform[i][0], pca_transform[i][1], color='black')
-    elif y_test[i] == 9:
-        plt.scatter(pca_transform[i][0], pca_transform[i][1], color='cyan')
+    point_list[2*y_test[i]].append(pca_transform[i][0])
+    point_list[2*y_test[i]+1].append(pca_transform[i][1])
+
+for i in range(0, 10):
+    plt.scatter(point_list[2*i], point_list[2*i+1], color=c_list[i], label=i)
+
+plt.legend()
 plt.show()
 plt.clf()
 
@@ -199,7 +189,7 @@ for i in range(len(dimensions)):
     plt.ylabel('vals')
     plt.show()
     plt.clf()
-
+y_aux = y_train
 x_train = torch.tensor(x_train, dtype=torch.float32)
 y_train = torch.tensor(y_train, dtype=torch.float32)
 x_test = torch.tensor(x_test, dtype=torch.float32)
@@ -217,6 +207,24 @@ cost = train(model, x_train, y_train)
 
 ae_dataset_test = model.test(x_test).detach().numpy()
 ae_dataset_train = model.test(x_train).detach().numpy()
+
+plot = voronoi_split(ae_dataset_train.T, y_aux)
+v = Voronoi(plot)
+v = voronoi_plot_2d(v)
+
+point_list = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+c_list = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'olive', 'black', 'cyan']
+
+for i in range(0, len(y_test), 10):
+    point_list[2*y_aux[i]].append(ae_dataset_test[0][i])
+    point_list[2*y_aux[i]+1].append(ae_dataset_test[1][i])
+
+for i in range(0, 10):
+    plt.scatter(point_list[2*i], point_list[2*i+1], color=c_list[i], label=i)
+
+plt.legend()
+plt.show()
+plt.clf()
 
 for i in range(len(dimensions)):
     knn = KNeighborsClassifier(n_neighbors=dimensions[i])
