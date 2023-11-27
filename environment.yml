@@ -1,0 +1,19 @@
+name: dsci
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8  # or any other version you prefer
+  - pandas
+  - numpy
+  - scipy
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - jupyterlab
+  - ipywidgets
+  - pyarrow  # for Feather file support
+  - notebook
+  - pip
+  - pip:
+    - torch
