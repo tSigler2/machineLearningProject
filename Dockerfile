@@ -18,6 +18,7 @@ SHELL ["conda", "run", "-n", "dsci", "/bin/bash", "-c"]
 
 # Install Python LSP server (and potentially other pip packages)
 RUN pip install 'python-lsp-server[all]'
+RUN apt-get update && apt-get install -y texlive-xetex texlive-fonts-recommended texlive-plain-generic && rm -rf /var/lib/apt/lists/*
 
 # Expose the port JupyterLab will use
 EXPOSE 8888
