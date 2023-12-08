@@ -46,5 +46,6 @@ To add new dependencies to the project:
 1. Update the environment.yml file with the required packages.
 2. Run the rebuild.sh script to update the Docker environment.
 
-Contributing
-Contributions to the project are welcome. Please ensure that any significant changes are accompanied by corresponding updates in the documentation and Docker environment setup.
+Not Using Docker:
+
+If you don't want to use Docker to run the Juypter Notebooks, the raw python files can be run using usr/local/bin/python3 filepath/filename.py
