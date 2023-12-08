@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Define your image and container names
-IMAGE_NAME="waterpump_project"
-CONTAINER_NAME="waterpump_container"
+IMAGE_NAME="nb_knn_project"
+CONTAINER_NAME="nb_knn_container"
 
 # Stop and remove the existing container if it exists
 if [ "$(docker ps -aq -f name=^${CONTAINER_NAME}$)" ]; then
